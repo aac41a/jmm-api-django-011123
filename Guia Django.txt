@@ -1,0 +1,405 @@
+pip freeze > requirements.txt
+pip install -r requirements.txt
+
+1. Configura el entorno:
+Asegúrate de tener Django y Django Rest Framework instalados:
+
+pip install django djangorestframework psycopg2
+
+
+2. Crea un nuevo proyecto y una aplicación:
+
+django-admin startproject tu_proyecto
+cd tu_proyecto
+python manage.py startapp api
+
+3. Configura la base de datos:
+En settings.py de tu proyecto, configura la conexión a PostgreSQL en la sección DATABASES:
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'nombre_de_tu_db',
+        'USER': 'tu_usuario',
+        'PASSWORD': 'tu_contraseña',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
+
+Asegúrate de que la aplicación esté registrada en INSTALLED_APPS:
+Verifica que la aplicación 'api' esté incluida en la configuración INSTALLED_APPS en el archivo settings.py de tu proyecto.
+
+# tu_proyecto/settings.py
+INSTALLED_APPS = [
+    # ...
+    'rest_framework',
+    'api',
+]
+
+4. Define los modelos en models.py de la aplicación api:
+
+# api/models.py
+from django.db import models
+
+class Departamento(models.Model):
+    nombre = models.CharField(max_length=100)
+
+class Empleado(models.Model):
+    nombre = models.CharField(max_length=100)
+    departamento = models.ForeignKey(Departamento, related_name='empleados', on_delete=models.CASCADE)
+
+
+5. Realiza migraciones y aplica:
+
+python manage.py makemigrations
+python manage.py migrate
+
+
+6. Crea un serializador en serializers.py de la aplicación api:
+
+# api/serializers.py
+from rest_framework import serializers
+from .models import Departamento, Empleado
+
+class EmpleadoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Empleado
+        fields = '__all__'
+
+class DepartamentoSerializer(serializers.ModelSerializer):
+    empleados = EmpleadoSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Departamento
+        fields = '__all__'
+
+
+7. Define las vistas en views.py de la aplicación api:
+
+# api/views.py
+from rest_framework import viewsets
+from .models import Departamento, Empleado
+from .serializers import DepartamentoSerializer, EmpleadoSerializer
+
+class DepartamentoList(viewsets.ModelViewSet):
+    queryset = Departamento.objects.all()
+    serializer_class = DepartamentoSerializer
+
+class EmpleadoList(viewsets.ModelViewSet):
+    queryset = Empleado.objects.all()
+    serializer_class = EmpleadoSerializer
+
+
+8. Configura las URL en urls.py de la aplicación api:
+
+# api/urls.py
+from django.urls import path, include
+from . import views
+from rest_framework import routers
+
+router = routers.DefaultRouter()
+router.register(r'empleados',views.EmpleadoList)
+router.register(r'departamentos', views.DepartamentoList)
+
+urlpatterns = [
+    path('', include(router.urls))
+]
+
+
+9. Incluye las URLs de la aplicación en urls.py de tu proyecto:
+
+from django.contrib import admin
+from django.urls import path, include
+from rest_framework.documentation import include_docs_urls
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/', include('api.url')),
+    path('docs/', include_docs_urls(title='api documentation')),
+]
+
+
+10. Crear un superusuario:
+Ejecuta el siguiente comando en tu terminal dentro del directorio de tu proyecto:
+
+11. Install CoreAPI
+pip install coreapi
+
+Asegúrate de que la aplicación esté registrada en INSTALLED_APPS:
+Verifica que la aplicación 'api' esté incluida en la configuración INSTALLED_APPS en el archivo settings.py de tu proyecto.
+
+# tu_proyecto/settings.py
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'rest_framework',
+    'coreapi',
+    'api',
+]
+
+añade esto en settings.py
+
+# REST_FRAMEWORK = {
+#     'DEFAULT_RENDERER_CLASSES': [
+#         'rest_framework.renderers.JSONRenderer',
+#         # 'rest_framework.renderers.BrowsableAPIRenderer',
+#         # 'rest_framework.schemas.coreapi.AutoSchema'
+#     ],
+# }
+
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema'
+}
+
+incluye la ruta en api_py urls: 
+
+from django.contrib import admin
+from django.urls import path, include
+from rest_framework.documentation import include_docs_urls
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/', include('api.url')),
+    path('docs/', include_docs_urls(title='api documentation')),
+]
+
+12. Ejecuta el servidor:
+
+python manage.py runserver
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+
+BASIC AUTH 
+
+1- En api admin creamos un nuevo usuario y le damos permisos por usuarios o por grupo a los endpoints requeridos.
+
+2- modificamos el archivo para añadir la pasarela de autentificación
+
+# api/views.py
+from rest_framework import viewsets
+from .models import Departamento, Empleado
+from .serializers import DepartamentoSerializer, EmpleadoSerializer
+from rest_framework.permissions import IsAuthenticated
+
+
+class DepartamentoList(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    queryset = Departamento.objects.all()
+    serializer_class = DepartamentoSerializer
+
+class EmpleadoList(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    queryset = Empleado.objects.all()
+    serializer_class = EmpleadoSerializer 
+
+--------------------------------------------------------------------------------------
+JWT AUTH 
+
+1- Intala simpleJWT
+pip install djangorestframework-simplejwt
+
+2- Configurar settings.py:
+# settings.py
+
+INSTALLED_APPS = [
+    ...
+    'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
+    'coreapi',
+    'api',
+]
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+    ],
+}
+
+JWT_AUTH = {
+    'JWT_RESPONSE_PAYLOAD_HANDLER': 'api_py.utils.jwt_response_payload_handler'
+}
+
+
+3- Crear un urls.py para autenticación:
+Crea un archivo urls.py en tu aplicación para gestionar las URL de autenticación:
+# api_py/urls.py
+
+"""
+from django.contrib import admin
+from django.urls import path, include
+from rest_framework.documentation import include_docs_urls
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/', include('api.urls')),
+    path('docs/', include_docs_urls(title='api docs')),
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
+]
+
+4- Crear utilidades para manejar JWT:
+Crea un archivo utils.py en tu proyecto para manejar la lógica relacionada con JWT:
+# api_py/utils.py
+
+from rest_framework_simplejwt.tokens import RefreshToken
+
+def jwt_response_payload_handler(token, user=None, request=None):
+    return {
+        'token': token,
+        'user_id': user.id,
+        'email': user.email,
+    }
+
+5- Actualizar vistas para requerir autenticación:
+Puedes aplicar la autenticación JWT a tus vistas
+# api/views.py
+from rest_framework import viewsets
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+from .models import Departamento, Empleado
+from .serializers import DepartamentoSerializer, EmpleadoSerializer
+from rest_framework.permissions import IsAuthenticated
+
+class DepartamentoList(viewsets.ModelViewSet):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    queryset = Departamento.objects.all()
+    serializer_class = DepartamentoSerializer
+
+class EmpleadoList(viewsets.ModelViewSet):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    queryset = Empleado.objects.all()
+    serializer_class = EmpleadoSerializer
+
+
+6- Realiza las migraciones a BBDD
+python manage.py migrate
+
+7- Iniciamos la api
+python manage.py runserver    
+
+8- desde postman debes obtener el token
+POST http://localhost:8000/api/token/
+
+en el body: {
+    "username":"api",
+    "password": "password"
+}
+
+obtenemos como respuesta: 
+
+{
+    "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTY5ODk2ODc3OSwiaWF0IjoxNjk4ODgyMzc5LCJqdGkiOiJjZDJlOGE5OWI2ZTA0ZjhjYWViNDBiZTk4OTYxNjFjYSIsInVzZXJfaWQiOjJ9.nLJ0iw8jBHQ9Qfv8EWI52MzP8lZOzBycBXQYXG4asK8",
+    "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNjk4ODgyNjc5LCJpYXQiOjE2OTg4ODIzNzksImp0aSI6IjQ0NDEyOGE4YTYxNTRjYmE5MmI1YWQ0NGExMzE1OGQyIiwidXNlcl9pZCI6Mn0._gzdWf1LfZbf-7faRPdLHTedEqv5NFaIcbosViuTMaY"
+}
+
+acces es el bearer token
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+DEPLOY RAILWAY
+
+1- manage.py en directorio raiz del repo
+
+2- Instalar gunicorn
+   pip install gunicorn
+
+3- Crear archivo requirements.txt dentro del proyecto api_py 
+   cd api_py
+   pip freeze > requirements.txt    
+
+4- Creacion de archivo Procfile dentro del proyecto api_py
+   web: python manage.py migrate && gunicorn api_py.wsgi
+
+5- creacion del runtime.txt dentro del proyecto api_py
+   python-3.9
+
+6- Configura la base de datos en railway y pasa nueva cadena de conexión en settings.py
+
+7- Vincula con el repositorio desde railway
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+8- Configura el CORS
+
+pip install django-cors-headers
+
+# settings.py
+
+INSTALLED_APPS = [
+    # ...
+    'corsheaders',
+    # ...
+]
+
+MIDDLEWARE = [
+    # ...
+    'corsheaders.middleware.CorsMiddleware',
+    # ...
+]
+
+
+# settings.py
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # Puedes especificar tus dominios permitidos aquí si lo deseas
+]
+
+CORS_ALLOW_ALL_ORIGINS = True
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+APPEND_SLASH = True
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+si el proyecto no está en el directorio raiz modifica el runtime.txt
+python-3.9
+api_py/
+
+
+
+
+
+
+
+
+
+
+
